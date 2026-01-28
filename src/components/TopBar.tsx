@@ -1,16 +1,32 @@
-import { useState } from "react";
-import axios from "axios";
-import { MapPin, MagnifyingGlass } from "phosphor-react";
-import { usePrayerFetcher } from "../hooks/usePrayerFetcher";
-import { usePrayerStore } from "../store/usePrayerStore";
-import logo from '../assets/logo-salah-fav.png'
+import { useEffect, useMemo, useState } from \"react\";
+import axios from \"axios\";
+import { MapPin, MagnifyingGlass } from \"phosphor-react\";
+import { usePrayerFetcher } from \"../hooks/usePrayerFetcher\";
+import { usePrayerStore } from \"../store/usePrayerStore\";
+import logo from \"../assets/logo-salah-fav.png\";
 
 const TopBar = () => {
-  const [location, setLocation] = useState("Location not selected");
+  const storeLocation = usePrayerStore((state) => state.location);
+  const coords = usePrayerStore((state) => state.coords);
+
+  const [location, setLocation] = useState(storeLocation || \"Location not selected\");
   const [isFetching, setIsFetching] = useState(false);
-  const [manualCity, setManualCity] = useState("");
+  const [manualCity, setManualCity] = useState(\"\");
+
   const setStoreLocation = usePrayerStore((state) => state.setLocation);
   const { fetchPrayerTimes } = usePrayerFetcher();
+
+  useEffect(() => {
+    if (storeLocation) setLocation(storeLocation);
+  }, [storeLocation]);
+
+  const nominatimHeaders = useMemo(
+    () => ({
+      // Nominatim usage policy: identify your app
+      \"Accept-Language\": \"en\",
+    }),
+    []
+  );
 
   // 📍 Auto-detect location
   const handleDetectLocation = () => {
@@ -20,7 +36,8 @@ const TopBar = () => {
         const { latitude, longitude } = position.coords;
         try {
           const res = await axios.get(
-            `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&addressdetails=1`
+            `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&addressdetails=1`,
+            { headers: nominatimHeaders }
           );
           const address = res.data.address;
           const city =
@@ -33,24 +50,24 @@ const TopBar = () => {
             address.district ||
             address.suburb ||
             address.neighbourhood ||
-            "Unknown City";
-          const country = address.country || "Unknown Country";
+            \"Unknown City\";
+          const country = address.country || \"Unknown Country\";
           const fullLocation = `${city}, ${country}`;
           setLocation(fullLocation);
           setStoreLocation(fullLocation);
 
-          // fetch namaz timings
+          // fetch prayer timings
           fetchPrayerTimes(latitude, longitude);
         } catch (error) {
-          console.error("Location API Error:", error);
-          setLocation("Failed to fetch location");
+          console.error(\"Location API Error:\", error);
+          setLocation(\"Failed to fetch location\");
         } finally {
           setIsFetching(false);
         }
       },
       (error) => {
-        console.error("Geolocation Error:", error);
-        setLocation("Location access denied");
+        console.error(\"Geolocation Error:\", error);
+        setLocation(\"Location access denied\");
         setIsFetching(false);
       }
     );
@@ -62,99 +79,119 @@ const TopBar = () => {
     setIsFetching(true);
     try {
       const res = await axios.get(
-        `https://nominatim.openstreetmap.org/search?city=${manualCity}&format=json&limit=1`
+        `https://nominatim.openstreetmap.org/search?city=${encodeURIComponent(
+          manualCity
+        )}&format=json&limit=1`,
+        { headers: nominatimHeaders }
       );
       if (res.data.length > 0) {
         const { lat, lon, display_name } = res.data[0];
         setLocation(display_name);
         setStoreLocation(display_name);
-        fetchPrayerTimes(lat, lon);
+        fetchPrayerTimes(Number(lat), Number(lon));
       } else {
-        setLocation("City not found");
+        setLocation(\"City not found\");
       }
     } catch (error) {
-      console.error("City search error:", error);
-      setLocation("Failed to fetch city");
+      console.error(\"City search error:\", error);
+      setLocation(\"Failed to fetch city\");
     } finally {
       setIsFetching(false);
-      setManualCity("");
+      setManualCity(\"\");
     }
   };
 
-  return (
-    <div className="flex flex-col lg:flex-row justify-between items-center p-4 gap-3">
-      <img src={logo} alt="Logo" className="h-18 lg:ml-15" />
+  const handleReset = () => {
+    setLocation(\"Location not selected\");
+    setStoreLocation(\"\");
+    // keep coords/timings in store; user can reselect
+  };
 
-      <div className="flex flex-wrap items-center justify-center gap-4 w-full">
-        {location === "Location not selected" ? (
+  const canShowSelected = location !== \"Location not selected\" && !!location;
+
+  return (
+    <div className=\"flex flex-col lg:flex-row justify-between items-center p-4 gap-3\">
+      <img src={logo} alt=\"Logo\" className=\"h-18 lg:ml-15\" />
+
+      <div className=\"flex flex-wrap items-center justify-center gap-4 w-full\">
+        {!canShowSelected ? (
           <>
             {/* Detect Location Button */}
             <button
+              data-testid=\"detect-location-button\"
               onClick={handleDetectLocation}
-              className="flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-500 text-white text-sm font-semibold px-5 py-2.5 rounded-xl shadow-md hover:shadow-lg hover:from-purple-700 hover:to-indigo-600 transition-all duration-200"
+              className=\"flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-500 text-white text-sm font-semibold px-5 py-2.5 rounded-xl shadow-md hover:shadow-lg hover:from-purple-700 hover:to-indigo-600 transition-all duration-200\"
             >
               {isFetching ? (
                 <>
                   <svg
-                    className="animate-spin h-4 w-4 text-white"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
+                    className=\"animate-spin h-4 w-4 text-white\"
+                    xmlns=\"http://www.w3.org/2000/svg\"
+                    fill=\"none\"
+                    viewBox=\"0 0 24 24\"
                   >
                     <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
+                      className=\"opacity-25\"
+                      cx=\"12\"
+                      cy=\"12\"
+                      r=\"10\"
+                      stroke=\"currentColor\"
+                      strokeWidth=\"4\"
                     ></circle>
                     <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 00-8 8z"
+                      className=\"opacity-75\"
+                      fill=\"currentColor\"
+                      d=\"M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 00-8 8z\"
                     ></path>
                   </svg>
                   Detecting...
                 </>
               ) : (
-                "📍 Detect Location"
+                \"📍 Detect Location\"
               )}
             </button>
 
             {/* Manual City Input */}
-            <div className="flex items-center bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden w-full sm:w-auto max-w-sm">
+            <div className=\"flex items-center bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden w-full sm:w-auto max-w-sm\">
               <input
-                type="text"
-                placeholder="Enter city name..."
+                data-testid=\"manual-city-input\"
+                type=\"text\"
+                placeholder=\"Enter city name...\"
                 value={manualCity}
                 onChange={(e) => setManualCity(e.target.value)}
-                className="flex-1 px-4 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className=\"flex-1 px-4 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500\"
               />
               <button
+                data-testid=\"manual-city-search-button\"
                 onClick={handleManualSearch}
-                className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 transition-all duration-200 flex items-center justify-center"
+                className=\"bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 transition-all duration-200 flex items-center justify-center\"
               >
                 <MagnifyingGlass size={18} />
               </button>
             </div>
           </>
         ) : (
-          <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-2xl shadow border border-gray-200 w-fit">
-            <MapPin size={20} className="text-purple-600" />
-            <span className="text-sm font-medium text-gray-800 truncate max-w-[200px] sm:max-w-none">
+          <div className=\"flex items-center gap-2 bg-white px-4 py-2 rounded-2xl shadow border border-gray-200 w-fit\">
+            <MapPin size={20} className=\"text-purple-600\" />
+            <span
+              data-testid=\"selected-location-text\"
+              className=\"text-sm font-medium text-gray-800 truncate max-w-[200px] sm:max-w-none\"
+              title={location}
+            >
               {location}
             </span>
             <button
-              onClick={() => setLocation("Location not selected")}
-              className="ml-2 text-xs text-gray-500 hover:text-red-500 transition"
+              data-testid=\"reset-location-button\"
+              onClick={handleReset}
+              className=\"ml-2 text-xs text-gray-500 hover:text-red-500 transition\"
+              aria-label=\"Reset location\"
+              title={coords.lat && coords.lon ? `Coords: ${coords.lat}, ${coords.lon}` : \"\"}
             >
               ✕
             </button>
           </div>
         )}
       </div>
-
     </div>
   );
 };
