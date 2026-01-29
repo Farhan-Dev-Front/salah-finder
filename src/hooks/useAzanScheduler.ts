@@ -1,9 +1,9 @@
-"import { useEffect, useMemo, useRef } from \"react\";
-import { usePrayerStore } from \"../store/usePrayerStore\";
-import { getNextPrayer, msUntil, prayerEventKey } from \"../utils/azanScheduler\";
-import { PRAYER_LABELS } from \"../utils/prayerNames\";
-import { playAzan } from \"../utils/playAzan\";
-import { showPrayerNotification } from \"../utils/notify\";
+import { useEffect, useMemo, useRef } from "react";
+import { usePrayerStore } from "../store/usePrayerStore";
+import { getNextPrayer, msUntil, prayerEventKey } from "../utils/azanScheduler";
+import { PRAYER_LABELS } from "../utils/prayerNames";
+import { playAzan } from "../utils/playAzan";
+import { showPrayerNotification } from "../utils/notify";
 
 /**
  * In-browser azan scheduling.
@@ -31,20 +31,22 @@ export const useAzanScheduler = () => {
 
   const trigger = async (prayer: string, at: Date) => {
     const key = prayerEventKey(prayer as any, at);
-    const already = localStorage.getItem(\"last-azan-event\");
+    const already = localStorage.getItem("last-azan-event");
     if (already === key) return;
-    localStorage.setItem(\"last-azan-event\", key);
+    localStorage.setItem("last-azan-event", key);
 
     const title = `Azan: ${PRAYER_LABELS[prayer as keyof typeof PRAYER_LABELS]?.en || prayer}`;
-    const body = location ? `It's time for ${prayer} (${PRAYER_LABELS[prayer as keyof typeof PRAYER_LABELS]?.ar || \"\"}) in ${location}` : `It's time for ${prayer}`;
+    const body = location ? `It's time for ${prayer} (${PRAYER_LABELS[prayer as keyof typeof PRAYER_LABELS]?.ar || ""}) in ${location}` : `It's time for ${prayer}`;
 
     if (azan.notificationsEnabled) {
       showPrayerNotification(title, body);
     }
 
-    // Only try playing sound if user has unlocked sound at least once
-    if (azan.soundUnlocked) {
-      await playAzan({ volume: azan.volume });
+    // Only play sound if user enabled sound globally and for this prayer
+    const perPrayer = azan.perPrayer as Record<string, boolean> | undefined;
+    const canPlayForPrayer = perPrayer ? perPrayer[prayer] : true;
+    if (azan.soundUnlocked && canPlayForPrayer) {
+      await playAzan({ volume: azan.volume, audioId: azan.audioId });
     }
   };
 
@@ -98,12 +100,12 @@ export const useAzanScheduler = () => {
   // Re-schedule when tab becomes visible (helps after sleep)
   useEffect(() => {
     const onVis = () => {
-      if (document.visibilityState === \"visible\") {
+      if (document.visibilityState === "visible") {
         scheduleNext();
       }
     };
-    document.addEventListener(\"visibilitychange\", onVis);
-    return () => document.removeEventListener(\"visibilitychange\", onVis);
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [azan.autoAzanEnabled, hasTimings, timings]);
 };

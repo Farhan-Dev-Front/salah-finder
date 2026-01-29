@@ -1,5 +1,6 @@
-import { create } from \"zustand\";
-import { persist } from \"zustand/middleware\";
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
+import type { PrayerKey } from "../utils/prayerNames";
 
 export type PrayerTimings = {
   Fajr: string;
@@ -19,6 +20,12 @@ export type AzanSettings = {
   notificationsEnabled: boolean;
   soundUnlocked: boolean;
   volume: number; // 0..1
+  // per-prayer sound enable flags
+  perPrayer: Record<PrayerKey, boolean>;
+  // per-prayer selected audio preset id
+  perPrayerAudio: Record<PrayerKey, string>;
+  // selected audio preset id
+  audioId: string;
 };
 
 interface PrayerState {
@@ -37,20 +44,35 @@ interface PrayerState {
 export const usePrayerStore = create<PrayerState>()(
   persist(
     (set) => ({
-      location: \"\",
+      location: "",
       coords: { lat: null, lon: null },
       timings: {
-        Fajr: \"\",
-        Dhuhr: \"\",
-        Asr: \"\",
-        Maghrib: \"\",
-        Isha: \"\",
+        Fajr: "",
+        Dhuhr: "",
+        Asr: "",
+        Maghrib: "",
+        Isha: "",
       },
       azan: {
         autoAzanEnabled: false,
         notificationsEnabled: false,
         soundUnlocked: false,
         volume: 1,
+        perPrayer: {
+          Fajr: true,
+          Dhuhr: true,
+          Asr: true,
+          Maghrib: true,
+          Isha: true,
+        },
+        perPrayerAudio: {
+          Fajr: "adhan1",
+          Dhuhr: "adhan1",
+          Asr: "adhan1",
+          Maghrib: "adhan1",
+          Isha: "adhan1",
+        },
+        audioId: "adhan1",
       },
 
       setLocation: (location) => set({ location }),
@@ -63,7 +85,7 @@ export const usePrayerStore = create<PrayerState>()(
         })),
     }),
     {
-      name: \"prayer-storage\",
+      name: "prayer-storage",
       version: 2,
       partialize: (state) => ({
         location: state.location,

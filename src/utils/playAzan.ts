@@ -2,35 +2,44 @@
 
 type PlayAzanOptions = {
   volume?: number; // 0..1
+  audioId?: string; // select preset
 };
 
-// Keep a single cached audio buffer URL per session to reduce repeated downloads
-let cachedObjectUrl: string | null = null;
+export const AZAN_PRESETS = [
+  { id: "adhan1", label: "Adhan 1", url: "https://cdn.islamic.network/adhan/audio/128/adhan1.mp3" },
+  { id: "adhan2", label: "Adhan 2", url: "https://cdn.islamic.network/adhan/audio/128/adhan2.mp3" },
+  { id: "azan_muezzin", label: "Muezzin", url: "https://cdn.islamic.network/adhan/audio/128/azan_muezzin.mp3" },
+];
 
-export const prefetchAzan = async (): Promise<void> => {
-  if (cachedObjectUrl) return;
-  const audioUrl = \"https://cdn.islamic.network/adhan/audio/128/adhan1.mp3\";
-  const response = await fetch(audioUrl);
-  if (!response.ok) throw new Error(\"Failed to download Azan audio\");
+// cache per-audio-id
+const cachedObjectUrls: Record<string, string | null> = {};
+
+export const prefetchAzan = async (audioId = "adhan1"): Promise<void> => {
+  if (cachedObjectUrls[audioId]) return;
+  const preset = AZAN_PRESETS.find((p) => p.id === audioId) || AZAN_PRESETS[0];
+  const response = await fetch(preset.url);
+  if (!response.ok) throw new Error("Failed to download Azan audio");
   const audioBlob = await response.blob();
-  cachedObjectUrl = URL.createObjectURL(audioBlob);
+  cachedObjectUrls[audioId] = URL.createObjectURL(audioBlob);
 };
 
 export const playAzan = async (opts: PlayAzanOptions = {}) => {
   try {
-    if (!cachedObjectUrl) {
-      await prefetchAzan();
+    const audioId = opts.audioId || "adhan1";
+    if (!cachedObjectUrls[audioId]) {
+      await prefetchAzan(audioId);
     }
 
-    const audio = new Audio(cachedObjectUrl!);
-    audio.volume = typeof opts.volume === \"number\" ? Math.min(Math.max(opts.volume, 0), 1) : 1;
+    const url = cachedObjectUrls[audioId]!;
+    const audio = new Audio(url);
+    audio.volume = typeof opts.volume === "number" ? Math.min(Math.max(opts.volume, 0), 1) : 1;
 
     // IMPORTANT: many browsers require user gesture before first audio playback.
     await audio.play();
 
     return;
   } catch (error) {
-    console.error(\"Azan play failed:\", error);
+    console.error("Azan play failed:", error);
   }
 };
 
@@ -46,13 +55,13 @@ export const unlockAudio = async (): Promise<boolean> => {
     source.buffer = buffer;
     source.connect(ctx.destination);
     source.start(0);
-    if (ctx.state === \"suspended\") {
+    if (ctx.state === "suspended") {
       await ctx.resume();
     }
     await prefetchAzan().catch(() => undefined);
     return true;
   } catch (e) {
-    console.warn(\"Audio unlock failed\", e);
+    console.warn("Audio unlock failed", e);
     return false;
   }
 };

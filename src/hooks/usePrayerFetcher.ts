@@ -1,5 +1,5 @@
-import axios from \"axios\";
-import { usePrayerStore } from \"../store/usePrayerStore\";
+import axios from "axios";
+import { usePrayerStore } from "../store/usePrayerStore";
 
 export const usePrayerFetcher = () => {
   const setTimings = usePrayerStore((state) => state.setTimings);
@@ -25,7 +25,7 @@ export const usePrayerFetcher = () => {
         Isha: timings.Isha,
       });
     } catch (error) {
-      console.error(\"Failed to fetch prayer times\", error);
+      console.error("Failed to fetch prayer times", error);
     }
   };
 

@@ -1,22 +1,26 @@
 import { useState } from "react";
 import { House, BookOpen, Compass, Star } from "phosphor-react";
+// prayer page is rendered via PrayerPage
 import QuranPage from "./QuranPage";
 import QiblaPage from "./QiblaPage";
 import AsmaPage from "./AsmaPage";
-import QuranAudioPlayer from "./QuranAudio";
+import PrayerPage from "./PrayerPage";
 
 const tabs = [
-  { name: "Home", icon: House },
+  { name: "Prayers", icon: House },
   { name: "Quran", icon: BookOpen },
   { name: "Qibla", icon: Compass },
   { name: "Asma", icon: Star },
 ];
 
 const BottomTabBar = () => {
-  const [active, setActive] = useState("Home");
+  const [active, setActive] = useState("Prayers");
+  
 
   const renderContent = () => {
     switch (active) {
+      case "Prayers":
+        return <PrayerPage />;
       case "Quran":
         return <QuranPage />;
       case "Qibla":
@@ -24,7 +28,7 @@ const BottomTabBar = () => {
       case "Asma":
         return <AsmaPage />;
       default:
-        return <QuranAudioPlayer />;
+        return <PrayerPage />;
     }
   };
 

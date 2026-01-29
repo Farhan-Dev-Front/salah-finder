@@ -1,6 +1,6 @@
-"import { parse, isValid, differenceInMilliseconds } from \"date-fns\";
-import type { PrayerTimings } from \"../store/usePrayerStore\";
-import { PRAYER_ORDER, type PrayerKey } from \"./prayerNames\";
+import { parse, isValid, differenceInMilliseconds } from "date-fns";
+import type { PrayerTimings } from "../store/usePrayerStore";
+import { PRAYER_ORDER, type PrayerKey } from "./prayerNames";
 
 export type ScheduledPrayer = {
   prayer: PrayerKey;
@@ -11,7 +11,7 @@ export const buildPrayerScheduleForToday = (timings: PrayerTimings, now = new Da
   const base = new Date(now);
 
   return PRAYER_ORDER.map((prayer) => {
-    const t = parse(timings[prayer], \"HH:mm\", base);
+    const t = parse(timings[prayer], "HH:mm", base);
     return { prayer, at: t };
   }).filter((p) => isValid(p.at));
 };
@@ -26,9 +26,9 @@ export const getNextPrayer = (timings: PrayerTimings, now = new Date()): Schedul
   if (!fajr) return null;
 
   const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-  const t = parse(fajr, \"HH:mm\", tomorrow);
+  const t = parse(fajr, "HH:mm", tomorrow);
   if (!isValid(t)) return null;
-  return { prayer: \"Fajr\", at: t };
+  return { prayer: "Fajr", at: t };
 };
 
 export const msUntil = (date: Date, now = new Date()) => {
@@ -38,7 +38,6 @@ export const msUntil = (date: Date, now = new Date()) => {
 
 export const prayerEventKey = (prayer: PrayerKey, at: Date) => {
   // minute precision is enough
-  const pad = (n: number) => String(n).padStart(2, \"0\");
+  const pad = (n: number) => String(n).padStart(2, "0");
   return `${prayer}-${at.getFullYear()}${pad(at.getMonth() + 1)}${pad(at.getDate())}-${pad(at.getHours())}${pad(at.getMinutes())}`;
 };
-"
