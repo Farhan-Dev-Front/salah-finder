@@ -1,8 +1,8 @@
 import { PRAYER_LABELS, type PrayerKey } from "../utils/prayerNames";
 import { formatTo12Hour } from "../utils/formatTime";
-import { AZAN_PRESETS, prefetchAzan, playAzan, unlockAudio } from "../utils/playAzan";
+import { AZAN_PRESETS, prefetchAzan, playAzan, unlockAudio, stopAzan, subscribePlaying, getPlayingId } from "../utils/playAzan";
 import { usePrayerStore } from "../store/usePrayerStore";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 type DropdownProps = {
   current: string;
@@ -60,9 +60,15 @@ const PrayerCard = ({ name, time, active, isCurrent, onToggleSound, soundOn }: P
   };
 
   const [busy, setBusy] = useState(false);
+  const [playing, setPlaying] = useState<{ ownerId: string | null; audioId: string | null }>({ ownerId: getPlayingId(), audioId: null });
+  useEffect(() => subscribePlaying((v) => setPlaying(v)), []);
+  const [myOwner, setMyOwner] = useState<string | null>(null);
 
   const handlePlaySample = async () => {
+    if (playing.ownerId !== null && playing.ownerId === myOwner) return stopAzan();
     if (busy) return;
+    const owner = `prayercard_${name}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,6)}`;
+    setMyOwner(owner);
     setBusy(true);
     try {
       if (!azan.soundUnlocked) {
@@ -70,7 +76,7 @@ const PrayerCard = ({ name, time, active, isCurrent, onToggleSound, soundOn }: P
         setAzanSettings({ soundUnlocked: ok });
       }
       await prefetchAzan(currentAudio);
-      await playAzan({ audioId: currentAudio, volume: azan.volume });
+      await playAzan({ audioId: currentAudio, volume: azan.volume, ownerId: owner });
     } catch {
       // ignore
     } finally {
@@ -97,7 +103,7 @@ const PrayerCard = ({ name, time, active, isCurrent, onToggleSound, soundOn }: P
 
         <div className="flex items-center gap-2 relative">
           <Dropdown current={currentAudio} onSelect={handleSelect} dark={!!active} />
-          <button onClick={handlePlaySample} disabled={busy} className="text-sm px-3 py-1 rounded bg-purple-600 text-white disabled:opacity-60">{busy ? "Playing..." : "Play"}</button>
+              <button onClick={handlePlaySample} disabled={busy && (playing.ownerId !== myOwner)} className="text-sm px-3 py-1 rounded bg-purple-600 text-white disabled:opacity-60">{playing.ownerId !== null && playing.ownerId === myOwner ? "Stop" : (busy ? "Playing..." : "Play Full")}</button>
           {onToggleSound && (
             <button onClick={onToggleSound} className="text-sm px-2 py-1 rounded bg-white/10">
               {soundOn ? "🔊" : "🔇"}

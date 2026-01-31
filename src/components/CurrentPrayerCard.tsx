@@ -80,10 +80,10 @@ const CurrentPrayerCard = () => {
   return (
     <div
       data-testid="current-prayer-card"
-      className={`w-[90%] mx-auto m-4 rounded-2xl p-5 ${getCurrentBackground()} text-white shadow-md`}
+      className={`mx-auto m-4 rounded-2xl p-4 sm:p-5 w-[95%] sm:w-[90%] ${getCurrentBackground()} text-white shadow-md text-center`}
     >
       {/* Header */}
-      <div className="flex justify-between items-start">
+      <div className="flex flex-col items-center text-center sm:flex-row sm:justify-between sm:items-start sm:text-left">
         <div>
           <div className="flex items-center gap-2">
             {(() => {
@@ -103,21 +103,21 @@ const CurrentPrayerCard = () => {
             Next prayer <b>{PRAYER_LABELS[nextPrayer as PrayerKey]?.en || nextPrayer}</b> ({PRAYER_LABELS[nextPrayer as PrayerKey]?.ar || ""}) in {formatTimeLeft(nextInMinutes)}
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <div data-testid="today-pill" className="text-xs bg-white/20 px-3 py-1 rounded-full">
+        <div className="mt-3 sm:mt-0 flex items-center gap-2 flex-wrap justify-center">
+          <div data-testid="today-pill" className="text-xs bg-white/20 px-2 sm:px-3 py-1 rounded-full">
             {today}
           </div>
-          <div data-testid="date-pill" className="text-xs bg-white/20 px-3 py-1 rounded-full">
+          <div data-testid="date-pill" className="text-xs bg-white/20 px-2 sm:px-3 py-1 rounded-full">
             {currentDate}
           </div>
-          <div data-testid="time-pill" className="text-xs bg-white/20 px-3 py-1 rounded-full">
+          <div data-testid="time-pill" className="text-xs bg-white/20 px-2 sm:px-3 py-1 rounded-full">
             {currentTime}
           </div>
         </div>
       </div>
 
       {/* Timings List */}
-      <div data-testid="prayer-timings-row" className="grid grid-cols-5 gap-2 text-center mt-6 text-sm">
+      <div data-testid="prayer-timings-row" className="grid grid-cols-3 md:grid-cols-5 gap-2 text-center mt-6 text-sm mx-auto justify-center justify-items-center place-items-center max-w-[420px] md:max-w-none">
         {prayerNames.map((name, idx) => {
           const Icon = icons[idx];
           const isActive = name === (currentPrayer as PrayerKey);
@@ -126,7 +126,7 @@ const CurrentPrayerCard = () => {
             <div
               data-testid={`prayer-timing-${name.toLowerCase()}`}
               key={name}
-              className={`flex flex-col items-center gap-1 ${isActive ? "text-white font-semibold" : "text-white/70"}`}
+              className={`flex flex-col items-center gap-1 px-1 ${isActive ? "text-white font-semibold" : "text-white/70"}`}
             >
               <Icon size={18} />
               <span className="text-xs">
@@ -162,8 +162,8 @@ const CurrentPrayerCard = () => {
           Prayer timings not loaded or invalid.
         </div>
       ) : (
-        <div className="relative mt-8 flex items-center justify-center w-full h-[100px]">
-          <svg className="absolute w-[90%] h-full" viewBox="0 0 200 100">
+        <div className="relative mt-6 flex items-center justify-center w-full h-[80px] md:h-[100px]">
+          <svg className="absolute w-full sm:w-[90%] h-full" viewBox="0 0 200 100">
             {Array.from({ length: 5 }).map((_, i) => {
               const angle = 180 / 5;
               const radius = 80;

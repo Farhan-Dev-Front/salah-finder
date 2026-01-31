@@ -1,7 +1,7 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { usePrayerStore } from "../store/usePrayerStore";
 import { PRAYER_LABELS, PRAYER_ORDER } from "../utils/prayerNames";
-import { playAzan, unlockAudio, AZAN_PRESETS, prefetchAzan } from "../utils/playAzan";
+import { playAzan, unlockAudio, AZAN_PRESETS, prefetchAzan, stopAzan, subscribePlaying, getPlayingId } from "../utils/playAzan";
 import { getNotificationPermission, isNotificationSupported, requestNotificationPermission } from "../utils/notify";
 import { getNextPrayer } from "../utils/azanScheduler";
 
@@ -12,12 +12,19 @@ const AzanPanel = () => {
   const setAzanSettings = usePrayerStore((s) => s.setAzanSettings);
 
   const [busy, setBusy] = useState(false);
+  const [playing, setPlaying] = useState<{ ownerId: string | null; audioId: string | null }>({ ownerId: getPlayingId(), audioId: null });
+  useEffect(() => subscribePlaying((v) => setPlaying(v)), []);
+  const [myOwnerMain, setMyOwnerMain] = useState<string | null>(null);
+  const [myOwnerPreset, setMyOwnerPreset] = useState<string | null>(null);
 
   const hasTimings = useMemo(() => {
     return PRAYER_ORDER.every((p) => !!timings[p]);
   }, [timings]);
 
   const next = useMemo(() => (hasTimings ? getNextPrayer(timings) : null), [hasTimings, timings]);
+
+  const nextAudioFull = next ? ((azan.perPrayerAudio && azan.perPrayerAudio[next.prayer]) || azan.audioId) : null;
+  const nextAudioHalf = next ? ((azan.perPrayerHalfAudio && azan.perPrayerHalfAudio[next.prayer]) || azan.halfAudioId || azan.audioId) : null;
 
   const notifSupported = isNotificationSupported();
   const notifPerm = notifSupported ? getNotificationPermission() : "denied";
@@ -33,9 +40,12 @@ const AzanPanel = () => {
   };
 
   const handlePlay = async () => {
+    if (playing.ownerId !== null && playing.ownerId === myOwnerMain) return stopAzan();
     setBusy(true);
+    const owner = `azanpanel_main_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,6)}`;
+    setMyOwnerMain(owner);
     try {
-      await playAzan({ volume: azan.volume, audioId: azan.audioId });
+      await playAzan({ volume: azan.volume, audioId: azan.audioId, ownerId: owner });
       if (!azan.soundUnlocked) setAzanSettings({ soundUnlocked: true });
     } finally {
       setBusy(false);
@@ -53,7 +63,7 @@ const AzanPanel = () => {
   };
 
   return (
-    <div data-testid="azan-panel" className="w-[90%] mx-auto mt-4 rounded-2xl bg-white shadow-sm border border-gray-200 p-4">
+    <div data-testid="azan-panel" className="w-[100%] mx-auto mt-4 rounded-2xl bg-white shadow-sm border border-gray-200 p-4">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <h2 className="text-lg font-semibold text-gray-900">Azan System</h2>
@@ -67,14 +77,54 @@ const AzanPanel = () => {
           )}
         </div>
 
-        <button
-          data-testid="azan-manual-play-button"
-          onClick={handlePlay}
-          disabled={busy}
-          className="shrink-0 rounded-xl bg-purple-600 text-white px-4 py-2 text-sm font-semibold hover:bg-purple-700 disabled:opacity-60"
-        >
-          Play Azan
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={async () => {
+              if (!next || !nextAudioFull) return;
+              if (playing.ownerId !== null && playing.ownerId === myOwnerMain) return stopAzan();
+              const owner = `azanpanel_next_full_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,6)}`;
+              setMyOwnerMain(owner);
+              setBusy(true);
+              try {
+                await prefetchAzan(nextAudioFull);
+                await playAzan({ audioId: nextAudioFull, volume: azan.volume, ownerId: owner });
+              } finally {
+                setBusy(false);
+              }
+            }}
+            className="shrink-0 rounded-xl bg-purple-600 text-white px-4 py-2 text-sm font-semibold hover:bg-purple-700 disabled:opacity-60"
+          >
+            {playing.ownerId !== null && playing.ownerId === myOwnerMain ? "Stop" : (busy ? "Playing..." : "Play Full")}
+          </button>
+
+          <button
+            onClick={async () => {
+              if (!next || !nextAudioHalf) return;
+              if (playing.ownerId !== null && playing.ownerId === myOwnerPreset) return stopAzan();
+              const owner = `azanpanel_next_half_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,6)}`;
+              setMyOwnerPreset(owner);
+              setBusy(true);
+              try {
+                await prefetchAzan(nextAudioHalf);
+                await playAzan({ audioId: nextAudioHalf, volume: azan.volume, ownerId: owner });
+              } finally {
+                setBusy(false);
+              }
+            }}
+            className="shrink-0 rounded-xl bg-purple-500 text-white px-4 py-2 text-sm font-semibold hover:bg-purple-600 disabled:opacity-60"
+          >
+            {playing.ownerId !== null && playing.ownerId === myOwnerPreset ? "Stop" : (busy ? "Playing..." : "Play Half")}
+          </button>
+
+          <button
+            data-testid="azan-manual-play-button"
+            onClick={handlePlay}
+            disabled={busy && playing.ownerId !== myOwnerMain}
+            className="shrink-0 rounded-xl bg-purple-600 text-white px-4 py-2 text-sm font-semibold hover:bg-purple-700 disabled:opacity-60"
+          >
+            {playing.ownerId !== null && playing.ownerId === myOwnerMain ? "Stop" : (busy ? "Playing..." : "Play Azan")}
+          </button>
+        </div>
       </div>
 
       <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -181,13 +231,24 @@ const AzanPanel = () => {
                   <option key={p.id} value={p.id}>{p.label}</option>
                 ))}
               </select>
-              <button
-                onClick={async () => { setBusy(true); try { await prefetchAzan(azan.audioId); await playAzan({ audioId: azan.audioId, volume: azan.volume }); } finally { setBusy(false); } }}
-                disabled={busy}
-                className="rounded-lg border border-purple-200 bg-white px-3 py-1.5 text-xs font-semibold text-purple-700 hover:bg-purple-50 disabled:opacity-60"
-              >
-                Play Preset
-              </button>
+                <button
+                  onClick={async () => {
+                    if (playing.ownerId !== null && playing.ownerId === myOwnerPreset) return stopAzan();
+                    const owner = `azanpanel_preset_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,6)}`;
+                    setMyOwnerPreset(owner);
+                    setBusy(true);
+                    try {
+                      await prefetchAzan(azan.audioId);
+                      await playAzan({ audioId: azan.audioId, volume: azan.volume, ownerId: owner });
+                    } finally {
+                      setBusy(false);
+                    }
+                  }}
+                  disabled={busy && playing.ownerId !== myOwnerPreset}
+                  className="rounded-lg border border-purple-200 bg-white px-3 py-1.5 text-xs font-semibold text-purple-700 hover:bg-purple-50 disabled:opacity-60"
+                >
+                  {playing.ownerId !== null && playing.ownerId === myOwnerPreset ? "Stop" : "Play Preset"}
+                </button>
             </div>
             <p className="text-xs text-gray-500 mt-1">Source: islam360</p>
           </div>

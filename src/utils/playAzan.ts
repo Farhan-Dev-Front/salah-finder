@@ -3,9 +3,14 @@
 type PlayAzanOptions = {
   volume?: number; // 0..1
   audioId?: string; // select preset
+  ownerId?: string; // optional UI owner id so subscribers can scope which control started playback
 };
+import fullLocal from "../assets/full-azan.mp3";
+import halfLocal from "../assets/half-azan.mp3";
 
 export const AZAN_PRESETS = [
+  { id: "local_full", label: " Full Azan", url: fullLocal },
+  { id: "local_half", label: " Half Azan", url: halfLocal },
   { id: "adhan1", label: "Adhan 1", url: "https://cdn.islamic.network/adhan/audio/128/adhan1.mp3" },
   { id: "adhan2", label: "Adhan 2", url: "https://cdn.islamic.network/adhan/audio/128/adhan2.mp3" },
   { id: "azan_muezzin", label: "Muezzin", url: "https://cdn.islamic.network/adhan/audio/128/azan_muezzin.mp3" },
@@ -23,6 +28,41 @@ export const prefetchAzan = async (audioId = "adhan1"): Promise<void> => {
   cachedObjectUrls[audioId] = URL.createObjectURL(audioBlob);
 };
 
+// Module-level current audio and play state + subscribers so UI can react
+let currentAudio: HTMLAudioElement | null = null;
+let currentPlayingOwnerId: string | null = null;
+let currentPlayingAudioId: string | null = null;
+const subscribers: Array<(payload: { ownerId: string | null; audioId: string | null }) => void> = [];
+
+const notifyPlaying = (payload: { ownerId: string | null; audioId: string | null }) => subscribers.forEach((cb) => cb(payload));
+
+export const subscribePlaying = (cb: (payload: { ownerId: string | null; audioId: string | null }) => void) => {
+  subscribers.push(cb);
+  return () => {
+    const idx = subscribers.indexOf(cb);
+    if (idx >= 0) subscribers.splice(idx, 1);
+  };
+};
+
+export const getPlayingId = () => currentPlayingOwnerId;
+
+export const isPlaying = () => currentPlayingOwnerId !== null;
+
+export const stopAzan = () => {
+  try {
+    if (currentAudio) {
+      currentAudio.pause();
+      currentAudio.currentTime = 0;
+      currentAudio = null;
+    }
+  } catch (e) {
+    console.debug("stopAzan error", e);
+  }
+  currentPlayingOwnerId = null;
+  currentPlayingAudioId = null;
+  notifyPlaying({ ownerId: null, audioId: null });
+};
+
 export const playAzan = async (opts: PlayAzanOptions = {}) => {
   try {
     const audioId = opts.audioId || "adhan1";
@@ -31,8 +71,25 @@ export const playAzan = async (opts: PlayAzanOptions = {}) => {
     }
 
     const url = cachedObjectUrls[audioId]!;
+    // stop any existing audio
+    stopAzan();
+
     const audio = new Audio(url);
+    currentAudio = audio;
     audio.volume = typeof opts.volume === "number" ? Math.min(Math.max(opts.volume, 0), 1) : 1;
+
+    // set owner id (either provided by caller or generate one)
+    const ownerId = opts.ownerId || `owner_${Math.random().toString(36).slice(2, 9)}`;
+    currentPlayingOwnerId = ownerId;
+    currentPlayingAudioId = audioId;
+    notifyPlaying({ ownerId, audioId });
+
+    audio.onended = () => {
+      currentAudio = null;
+      currentPlayingOwnerId = null;
+      currentPlayingAudioId = null;
+      notifyPlaying({ ownerId: null, audioId: null });
+    };
 
     // IMPORTANT: many browsers require user gesture before first audio playback.
     await audio.play();
@@ -40,6 +97,7 @@ export const playAzan = async (opts: PlayAzanOptions = {}) => {
     return;
   } catch (error) {
     console.error("Azan play failed:", error);
+    stopAzan();
   }
 };
 

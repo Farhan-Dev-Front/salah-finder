@@ -1,5 +1,5 @@
-import { useState, useRef } from "react";
-import { AZAN_PRESETS, prefetchAzan, playAzan, unlockAudio } from "../utils/playAzan";
+import { useState, useRef, useEffect } from "react";
+import { AZAN_PRESETS, prefetchAzan, playAzan, unlockAudio, stopAzan, subscribePlaying, getPlayingId } from "../utils/playAzan";
 import { usePrayerStore } from "../store/usePrayerStore";
 
 const AzanSettings = () => {
@@ -8,6 +8,10 @@ const AzanSettings = () => {
 
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [playing, setPlaying] = useState<{ ownerId: string | null; audioId: string | null }>({ ownerId: getPlayingId(), audioId: null });
+  useEffect(() => subscribePlaying((v) => setPlaying(v)), []);
+  const [myOwnerFull, setMyOwnerFull] = useState<string | null>(null);
+  const [myOwnerHalf, setMyOwnerHalf] = useState<string | null>(null);
   const ref = useRef<HTMLDivElement | null>(null);
 
   return (
@@ -15,7 +19,7 @@ const AzanSettings = () => {
       <button onClick={() => setOpen((v) => !v)} className="text-sm text-gray-700 underline">Settings</button>
       {open && (
         <div ref={ref} className="mt-3 p-3 rounded-lg bg-white shadow w-64">
-          <div className="mb-2 text-sm font-medium">Azan Preset</div>
+          <div className="mb-2 text-sm font-medium">Full Azan</div>
 
           <div className="relative">
             <button
@@ -41,6 +45,20 @@ const AzanSettings = () => {
             </div>
           </div>
 
+          <div className="mt-3 mb-2 text-sm font-medium">Half (Short) Azan</div>
+
+          <div className="relative">
+            <select
+              value={azan.halfAudioId}
+              onChange={(e) => setAzanSettings({ halfAudioId: e.target.value })}
+              className="w-full px-3 py-2 border rounded bg-white text-sm"
+            >
+              {AZAN_PRESETS.map((p) => (
+                <option key={p.id} value={p.id}>{p.label}</option>
+              ))}
+            </select>
+          </div>
+
           <div className="mt-3">
             <label className="text-xs">Volume</label>
             <input type="range" min={0} max={1} step={0.05} value={azan.volume} onChange={(e) => setAzanSettings({ volume: Number(e.target.value) })} className="w-full" />
@@ -49,24 +67,60 @@ const AzanSettings = () => {
           <div className="mt-3 flex items-center gap-2">
             <button
               onClick={async () => {
+                const audioId = azan.audioId;
+                if (playing.ownerId !== null && playing.ownerId === myOwnerFull) {
+                  stopAzan();
+                  return;
+                }
                 if (busy) return;
+                const owner = `azanset_full_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,6)}`;
+                setMyOwnerFull(owner);
                 setBusy(true);
                 try {
                   if (!azan.soundUnlocked) {
                     const ok = await unlockAudio();
                     setAzanSettings({ soundUnlocked: ok });
                   }
-                  await prefetchAzan(azan.audioId);
-                  await playAzan({ audioId: azan.audioId, volume: azan.volume });
+                  await prefetchAzan(audioId);
+                  await playAzan({ audioId, volume: azan.volume, ownerId: owner });
                 } finally {
                   setBusy(false);
                 }
               }}
-              disabled={busy}
+              disabled={busy && playing.ownerId !== myOwnerFull}
               className="px-3 py-1 rounded bg-purple-600 text-white disabled:opacity-60"
             >
-              {busy ? "Playing..." : "Play"}
+              {playing.ownerId !== null && playing.ownerId === myOwnerFull ? "Stop" : (busy ? "Playing..." : "Play Full")}
             </button>
+
+            <button
+              onClick={async () => {
+                const audioId = azan.halfAudioId || azan.audioId;
+                if (playing.ownerId !== null && playing.ownerId === myOwnerHalf) {
+                  stopAzan();
+                  return;
+                }
+                if (busy) return;
+                const owner = `azanset_half_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,6)}`;
+                setMyOwnerHalf(owner);
+                setBusy(true);
+                try {
+                  if (!azan.soundUnlocked) {
+                    const ok = await unlockAudio();
+                    setAzanSettings({ soundUnlocked: ok });
+                  }
+                  await prefetchAzan(audioId);
+                  await playAzan({ audioId, volume: azan.volume, ownerId: owner });
+                } finally {
+                  setBusy(false);
+                }
+              }}
+              disabled={busy && playing.ownerId !== myOwnerHalf}
+              className="px-3 py-1 rounded bg-purple-500 text-white disabled:opacity-60"
+            >
+              {playing.ownerId !== null && playing.ownerId === myOwnerHalf ? "Stop" : (busy ? "Playing..." : "Play Half")}
+            </button>
+
             <button
               onClick={async () => {
                 const ok = await unlockAudio();

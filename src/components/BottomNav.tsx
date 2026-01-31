@@ -33,7 +33,7 @@ const BottomTabBar = () => {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-gradient-to-b from-purple-50 to-white">
+    <div className="w-[95%] sm:w-[90%] mx-auto flex flex-col h-screen bg-gradient-to-b from-purple-50 to-white">
       <div className="flex-1 overflow-y-auto">{renderContent()}</div>
 
       {/* iOS Style Bottom Bar */}
