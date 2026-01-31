@@ -29,7 +29,6 @@ export const prefetchAzan = async (audioId = "adhan1"): Promise<void> => {
 // Module-level current audio and play state + subscribers so UI can react
 let currentAudio: HTMLAudioElement | null = null;
 let currentPlayingOwnerId: string | null = null;
-let currentPlayingAudioId: string | null = null;
 export type PlayingPayload = { ownerId: string | null; audioId: string | null; prayer?: string | null };
 const subscribers: Array<(payload: PlayingPayload) => void> = [];
 
@@ -58,7 +57,6 @@ export const stopAzan = () => {
     console.debug("stopAzan error", e);
   }
   currentPlayingOwnerId = null;
-  currentPlayingAudioId = null;
   notifyPlaying({ ownerId: null, audioId: null, prayer: null });
 };
 
@@ -80,13 +78,11 @@ export const playAzan = async (opts: PlayAzanOptions = {}) => {
     // set owner id (either provided by caller or generate one)
     const ownerId = opts.ownerId || `owner_${Math.random().toString(36).slice(2, 9)}`;
     currentPlayingOwnerId = ownerId;
-    currentPlayingAudioId = audioId;
     notifyPlaying({ ownerId, audioId, prayer: opts.prayer || null });
 
     audio.onended = () => {
       currentAudio = null;
       currentPlayingOwnerId = null;
-      currentPlayingAudioId = null;
       notifyPlaying({ ownerId: null, audioId: null, prayer: null });
     };
 

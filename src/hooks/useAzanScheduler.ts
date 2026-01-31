@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef } from "react";
 import { usePrayerStore } from "../store/usePrayerStore";
 import { getNextPrayer, msUntil, prayerEventKey } from "../utils/azanScheduler";
+import type { PrayerKey } from "../utils/prayerNames";
 import { PRAYER_LABELS } from "../utils/prayerNames";
 import { playAzan } from "../utils/playAzan";
 import { showPrayerNotification } from "../utils/notify";
@@ -46,7 +47,8 @@ export const useAzanScheduler = () => {
     const perPrayer = azan.perPrayer as Record<string, boolean> | undefined;
     const canPlayForPrayer = perPrayer ? perPrayer[prayer] : true;
     if (azan.soundUnlocked && canPlayForPrayer) {
-      const audioId = (azan.perPrayerAudio && azan.perPrayerAudio[prayer as any]) || azan.audioId;
+      const key = prayer as PrayerKey;
+      const audioId = (azan.perPrayerAudio && azan.perPrayerAudio[key]) || azan.audioId;
       const owner = `scheduler_${prayer}_${Date.now().toString(36)}`;
       await playAzan({ volume: azan.volume, audioId, ownerId: owner, prayer });
     }

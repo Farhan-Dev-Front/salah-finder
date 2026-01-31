@@ -24,6 +24,10 @@ export type AzanSettings = {
   perPrayer: Record<PrayerKey, boolean>;
   // per-prayer selected audio preset id
   perPrayerAudio: Record<PrayerKey, string>;
+  // per-prayer selected half (short) audio preset id
+  perPrayerHalfAudio?: Record<PrayerKey, string>;
+  // selected half-audio preset id (fallback)
+  halfAudioId?: string;
   // selected audio preset id
   audioId: string;
 };
@@ -72,6 +76,14 @@ export const usePrayerStore = create<PrayerState>()(
           Maghrib: "adhan1",
           Isha: "adhan1",
         },
+        perPrayerHalfAudio: {
+          Fajr: "adhan1",
+          Dhuhr: "adhan1",
+          Asr: "adhan1",
+          Maghrib: "adhan1",
+          Isha: "adhan1",
+        },
+        halfAudioId: "local_half",
         audioId: "adhan1",
       },
 

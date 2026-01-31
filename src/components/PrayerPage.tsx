@@ -1,16 +1,8 @@
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState } from "react";
 import { parse, isAfter } from "date-fns";
 import { usePrayerStore } from "../store/usePrayerStore";
 import PrayerCard from "./PrayerCard";
 import { PRAYER_ORDER } from "../utils/prayerNames";
-import {
-  playAzan,
-  prefetchAzan,
-  unlockAudio,
-  stopAzan,
-  subscribePlaying,
-  getPlayingId,
-} from "../utils/playAzan";
 import AzanPanel from "./AzanPanel";
 import { useRef } from "react";
 
@@ -36,12 +28,7 @@ const PrayerPage = () => {
   const prayerList = PRAYER_ORDER;
 
   const [mode, setMode] = useState("auto");
-  const [busy, setBusy] = useState(false);
   const [showAzanPanel, setShowAzanPanel] = useState(false);
-  const [playing, setPlaying] = useState<{ ownerId: string | null; audioId: string | null; prayer?: string | null }>({ ownerId: getPlayingId(), audioId: null, prayer: null });
-  useEffect(() => subscribePlaying((v) => setPlaying(v)), []);
-  const [myOwnerFull, setMyOwnerFull] = useState<string | null>(null);
-  const [myOwnerHalf, setMyOwnerHalf] = useState<string | null>(null);
   const azanRef = useRef<HTMLDivElement | null>(null);
 
   // compute next using simple search
@@ -64,16 +51,7 @@ const PrayerPage = () => {
     }
   }, [timings]);
 
-  const nextAudioFull = next
-    ? (azan.perPrayerAudio && azan.perPrayerAudio[next.prayer]) || azan.audioId
-    : null;
-  // half audio may not exist on azan object; fallback to full
-  const nextAudioHalf = next
-    ? ((ajan: any) =>
-        (ajan.perPrayerHalfAudio && ajan.perPrayerHalfAudio[next!.prayer]) ||
-        (ajan.halfAudioId as any) ||
-        ajan.audioId)(azan)
-    : null;
+  // compute next audio ids when needed (computed in AzanPanel/scheduler)
 
   return (
     <div className="p-4">

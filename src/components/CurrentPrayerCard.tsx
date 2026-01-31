@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import { usePrayerStore } from "../store/usePrayerStore";
-import useAzan from "../hooks/useAzan";
 import { format, parse, differenceInMinutes, isAfter } from "date-fns";
 import { CloudSun, Sun, Cloud, CloudMoon, Moon } from "phosphor-react";
 import { formatTo12Hour } from "../utils/formatTime";
@@ -42,7 +41,7 @@ const getCurrentAndNextPrayer = (timings: Record<string, string>) => {
 
 const CurrentPrayerCard = () => {
   const timings = usePrayerStore((state) => state.timings);
-  const { playAzan, stopAzan, isPlaying } = useAzan();
+  // azan hook removed here because playback is handled centrally via playAzan util
 
   const [progressData, setProgressData] = useState(() => getCurrentPrayerProgress(timings));
 
