@@ -137,7 +137,7 @@ const CurrentPrayerCard = () => {
                     <span className="text-xs" data-testid={`prayer-time-${name.toLowerCase()}`}>
                       {timings[name] ? formatTo12Hour(timings[name]) : "--:--"}
                     </span>
-                    {isActive ? (
+                    {/* {isActive ? (
                       <button
                         aria-label={`play-azan-${name}`}
                         onClick={() => {
@@ -149,7 +149,7 @@ const CurrentPrayerCard = () => {
                       >
                         {isPlaying ? <span aria-hidden className="text-xs">🔊</span> : <span aria-hidden className="text-xs">🔇</span>}
                       </button>
-                    ) : null}
+                    ) : null} */}
                   </div>
             </div>
           );

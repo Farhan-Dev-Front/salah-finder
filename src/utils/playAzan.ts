@@ -4,6 +4,7 @@ type PlayAzanOptions = {
   volume?: number; // 0..1
   audioId?: string; // select preset
   ownerId?: string; // optional UI owner id so subscribers can scope which control started playback
+  prayer?: string; // optional prayer key when played by scheduler
 };
 import fullLocal from "../assets/full-azan.mp3";
 import halfLocal from "../assets/half-azan.mp3";
@@ -11,9 +12,6 @@ import halfLocal from "../assets/half-azan.mp3";
 export const AZAN_PRESETS = [
   { id: "local_full", label: " Full Azan", url: fullLocal },
   { id: "local_half", label: " Half Azan", url: halfLocal },
-  { id: "adhan1", label: "Adhan 1", url: "https://cdn.islamic.network/adhan/audio/128/adhan1.mp3" },
-  { id: "adhan2", label: "Adhan 2", url: "https://cdn.islamic.network/adhan/audio/128/adhan2.mp3" },
-  { id: "azan_muezzin", label: "Muezzin", url: "https://cdn.islamic.network/adhan/audio/128/azan_muezzin.mp3" },
 ];
 
 // cache per-audio-id
@@ -32,11 +30,12 @@ export const prefetchAzan = async (audioId = "adhan1"): Promise<void> => {
 let currentAudio: HTMLAudioElement | null = null;
 let currentPlayingOwnerId: string | null = null;
 let currentPlayingAudioId: string | null = null;
-const subscribers: Array<(payload: { ownerId: string | null; audioId: string | null }) => void> = [];
+export type PlayingPayload = { ownerId: string | null; audioId: string | null; prayer?: string | null };
+const subscribers: Array<(payload: PlayingPayload) => void> = [];
 
-const notifyPlaying = (payload: { ownerId: string | null; audioId: string | null }) => subscribers.forEach((cb) => cb(payload));
+const notifyPlaying = (payload: PlayingPayload) => subscribers.forEach((cb) => cb(payload));
 
-export const subscribePlaying = (cb: (payload: { ownerId: string | null; audioId: string | null }) => void) => {
+export const subscribePlaying = (cb: (payload: PlayingPayload) => void) => {
   subscribers.push(cb);
   return () => {
     const idx = subscribers.indexOf(cb);
@@ -60,7 +59,7 @@ export const stopAzan = () => {
   }
   currentPlayingOwnerId = null;
   currentPlayingAudioId = null;
-  notifyPlaying({ ownerId: null, audioId: null });
+  notifyPlaying({ ownerId: null, audioId: null, prayer: null });
 };
 
 export const playAzan = async (opts: PlayAzanOptions = {}) => {
@@ -82,13 +81,13 @@ export const playAzan = async (opts: PlayAzanOptions = {}) => {
     const ownerId = opts.ownerId || `owner_${Math.random().toString(36).slice(2, 9)}`;
     currentPlayingOwnerId = ownerId;
     currentPlayingAudioId = audioId;
-    notifyPlaying({ ownerId, audioId });
+    notifyPlaying({ ownerId, audioId, prayer: opts.prayer || null });
 
     audio.onended = () => {
       currentAudio = null;
       currentPlayingOwnerId = null;
       currentPlayingAudioId = null;
-      notifyPlaying({ ownerId: null, audioId: null });
+      notifyPlaying({ ownerId: null, audioId: null, prayer: null });
     };
 
     // IMPORTANT: many browsers require user gesture before first audio playback.

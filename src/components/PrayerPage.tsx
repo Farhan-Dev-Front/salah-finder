@@ -38,10 +38,7 @@ const PrayerPage = () => {
   const [mode, setMode] = useState("auto");
   const [busy, setBusy] = useState(false);
   const [showAzanPanel, setShowAzanPanel] = useState(false);
-  const [playing, setPlaying] = useState<{
-    ownerId: string | null;
-    audioId: string | null;
-  }>({ ownerId: getPlayingId(), audioId: null });
+  const [playing, setPlaying] = useState<{ ownerId: string | null; audioId: string | null; prayer?: string | null }>({ ownerId: getPlayingId(), audioId: null, prayer: null });
   useEffect(() => subscribePlaying((v) => setPlaying(v)), []);
   const [myOwnerFull, setMyOwnerFull] = useState<string | null>(null);
   const [myOwnerHalf, setMyOwnerHalf] = useState<string | null>(null);
@@ -185,7 +182,10 @@ const PrayerPage = () => {
             time={timings[p]}
             isCurrent={p === current}
             active={!!next && p === next.prayer}
-            soundOn={true}
+            soundOn={!!azan.perPrayer?.[p]}
+            onToggleSound={() => {
+              usePrayerStore.getState().setAzanSettings({ perPrayer: { ...(azan.perPrayer || {}), [p]: !azan.perPrayer?.[p] } });
+            }}
           />
         ))}
       </div>

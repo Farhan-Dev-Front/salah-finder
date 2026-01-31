@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { AZAN_PRESETS, prefetchAzan, playAzan, unlockAudio, stopAzan, subscribePlaying, getPlayingId } from "../utils/playAzan";
+import { PRAYER_ORDER, PRAYER_LABELS } from "../utils/prayerNames";
+import { requestNotificationPermission, getNotificationPermission } from "../utils/notify";
 import { usePrayerStore } from "../store/usePrayerStore";
 
 const AzanSettings = () => {
@@ -8,11 +10,12 @@ const AzanSettings = () => {
 
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [playing, setPlaying] = useState<{ ownerId: string | null; audioId: string | null }>({ ownerId: getPlayingId(), audioId: null });
+  const [playing, setPlaying] = useState<{ ownerId: string | null; audioId: string | null; prayer?: string | null }>({ ownerId: getPlayingId(), audioId: null, prayer: null });
   useEffect(() => subscribePlaying((v) => setPlaying(v)), []);
   const [myOwnerFull, setMyOwnerFull] = useState<string | null>(null);
   const [myOwnerHalf, setMyOwnerHalf] = useState<string | null>(null);
   const ref = useRef<HTMLDivElement | null>(null);
+  const [notifPerm, setNotifPerm] = useState<NotificationPermission>(() => getNotificationPermission());
 
   return (
     <div>
@@ -62,6 +65,55 @@ const AzanSettings = () => {
           <div className="mt-3">
             <label className="text-xs">Volume</label>
             <input type="range" min={0} max={1} step={0.05} value={azan.volume} onChange={(e) => setAzanSettings({ volume: Number(e.target.value) })} className="w-full" />
+          </div>
+
+          <div className="mt-3">
+            <label className="text-sm font-medium">Auto Azan</label>
+            <div className="mt-2 flex items-center gap-2">
+              <button
+                onClick={() => setAzanSettings({ autoAzanEnabled: !azan.autoAzanEnabled })}
+                className={`px-3 py-1 rounded ${azan.autoAzanEnabled ? "bg-green-600 text-white" : "bg-gray-100 text-gray-700"}`}
+              >
+                {azan.autoAzanEnabled ? "Enabled" : "Disabled"}
+              </button>
+
+              <div className="text-sm text-gray-600">Play azan automatically at prayer times</div>
+            </div>
+          </div>
+
+          <div className="mt-3">
+            <label className="text-sm font-medium">Notifications</label>
+            <div className="mt-2 flex items-center gap-2">
+              <button
+                onClick={async () => {
+                  // request permission and persist
+                  const perm = await requestNotificationPermission();
+                  setNotifPerm(perm);
+                  setAzanSettings({ notificationsEnabled: perm === "granted" });
+                }}
+                className={`px-3 py-1 rounded ${azan.notificationsEnabled ? "bg-green-600 text-white" : "bg-gray-100 text-gray-700"}`}
+              >
+                {azan.notificationsEnabled ? "Enabled" : (notifPerm === "denied" ? "Denied" : "Request")}
+              </button>
+
+              <div className="text-sm text-gray-600">Show notification when azan plays</div>
+            </div>
+          </div>
+
+          <div className="mt-3">
+            <label className="text-sm font-medium">Auto-play per prayer</label>
+            <div className="mt-2 grid grid-cols-1 gap-1">
+              {PRAYER_ORDER.map((p) => (
+                <label key={p} className="flex items-center justify-between px-2 py-1 rounded bg-gray-50">
+                  <div className="text-sm">{PRAYER_LABELS[p].en}</div>
+                  <input
+                    type="checkbox"
+                    checked={!!azan.perPrayer?.[p]}
+                    onChange={(e) => setAzanSettings({ perPrayer: { ...(azan.perPrayer || {}), [p]: e.target.checked } })}
+                  />
+                </label>
+              ))}
+            </div>
           </div>
 
           <div className="mt-3 flex items-center gap-2">

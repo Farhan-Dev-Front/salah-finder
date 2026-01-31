@@ -12,7 +12,7 @@ const AzanPanel = () => {
   const setAzanSettings = usePrayerStore((s) => s.setAzanSettings);
 
   const [busy, setBusy] = useState(false);
-  const [playing, setPlaying] = useState<{ ownerId: string | null; audioId: string | null }>({ ownerId: getPlayingId(), audioId: null });
+  const [playing, setPlaying] = useState<{ ownerId: string | null; audioId: string | null; prayer?: string | null }>({ ownerId: getPlayingId(), audioId: null, prayer: null });
   useEffect(() => subscribePlaying((v) => setPlaying(v)), []);
   const [myOwnerMain, setMyOwnerMain] = useState<string | null>(null);
   const [myOwnerPreset, setMyOwnerPreset] = useState<string | null>(null);

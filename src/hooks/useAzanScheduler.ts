@@ -46,7 +46,9 @@ export const useAzanScheduler = () => {
     const perPrayer = azan.perPrayer as Record<string, boolean> | undefined;
     const canPlayForPrayer = perPrayer ? perPrayer[prayer] : true;
     if (azan.soundUnlocked && canPlayForPrayer) {
-      await playAzan({ volume: azan.volume, audioId: azan.audioId });
+      const audioId = (azan.perPrayerAudio && azan.perPrayerAudio[prayer as any]) || azan.audioId;
+      const owner = `scheduler_${prayer}_${Date.now().toString(36)}`;
+      await playAzan({ volume: azan.volume, audioId, ownerId: owner, prayer });
     }
   };
 
